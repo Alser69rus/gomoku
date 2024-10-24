@@ -1,155 +1,60 @@
-class Board:
-    def __init__(self, width, height, *, line_to_win=5):
-        self.width = width
-        self.height = height
-        self.line_to_win = line_to_win
-        self.cells = [[0] * width for _ in range(height)]
-        self.cell_chars = {0: " ", 1: "\033[31mX\033[0m", 2: "\033[32mO\033[0m"}
-        self.move_count = 0
+from board import Board
+from player import Player, HumanPlayer
+from ai import AiPlayer
 
-    def current_player(self):
-        return self.move_count % 2 + 1
 
-    def show(self):
-        print(
-            f'{f"Ход {self.move_count+1}, ходит игрок {self.cell_chars[self.current_player()]}":^{self.width*4+5}}'
-        )
-        print("   ", end="")
-        for i in range(self.width):
-            print(f" {i:^{3}}", end="")
+def choose_player(player_name: str) -> Player:
+    while True:
+        print(f"Выберите игрока: {player_name}")
+        print("1. Человек")
+        print("2. Компьютер")
+        choice = int(input())
+        if choice == 1:
+            return HumanPlayer()
+        elif choice == 2:
+            return AiPlayer()
+        else:
+            print("Некорректный ввод")
+
+
+class Game:
+    def __init__(self, board: Board, player1: Player, player2: Player):
+        self.board = board
+        self.player1 = player1
+        self.player2 = player2
+        self.current_player = player1
+        self.winner = None
+
+    def play(self):
+        while True:
+            self.board.show()
+            if self.current_player == self.player1:
+                row, col = self.player1.get_move(self.board)
+            else:
+                row, col = self.player2.get_move(self.board)
+            self.board = self.board.move(row, col)
+            if self.board.score() > 0:
+                self.winner = self.player1
+                break
+            if self.board.score() < 0:
+                self.winner = self.player2
+                break
+
         print("")
-
-        print("  ", "-" * (self.width * 4 + 1))
-        for i, row in enumerate(self.cells):
-            print(f"{i:<3}", end="")
-            for cell in row:
-                print(f"| {self.cell_chars[cell]} ", end="")
-            print("|")
-            print("  ", "-" * (self.width * 4 + 1))
-
-    def aviable_moves(self):
-        moves = []
-        for i in range(self.height):
-            for j in range(self.width):
-                if self.cells[i][j] == 0:
-                    moves.append((i, j))
-        return moves
-
-    def check_win_for_cel(self, row: int, col: int) -> int:
-        if self.cells[row][col] == 0:
-            return 0
-
-        player = self.cells[row][col]
-
-        start = row
-        while start > 0 and self.cells[start - 1][col] == player:
-            start -= 1
-        end = row
-        while end < self.height - 1 and self.cells[end + 1][col] == player:
-            end += 1
-        if end - start + 1 == self.line_to_win:
-            return player
-
-        start = col
-        while start > 0 and self.cells[row][start - 1] == player:
-            start -= 1
-        end = col
-        while end < self.width - 1 and self.cells[row][end + 1] == player:
-            end += 1
-        if end - start + 1 == self.line_to_win:
-            return player
-
-        start = 0
-        while (
-            row - start > 0
-            and col - start > 0
-            and self.cells[row - start - 1][col - start - 1] == player
-        ):
-            start += 1
-        end = 0
-        while (
-            row + end < self.height - 1
-            and col + end < self.width - 1
-            and self.cells[row + end + 1][col + end + 1] == player
-        ):
-            end += 1
-
-        if end + start + 1 == self.line_to_win:
-            return player
-
-        start = 0
-        while (
-            row + start < self.height - 1
-            and col - start > 0
-            and self.cells[row + start + 1][col - start - 1] == player
-        ):
-            start += 1
-        end = 0
-        while (
-            row - end > 0
-            and col + end < self.width - 1
-            and self.cells[row - end - 1][col + end + 1] == player
-        ):
-            end += 1
-
-        if end + start + 1 == self.line_to_win:
-            return player
-
-        return 0
-
-    def score(self) -> int:
-        winner = [
-            self.check_win_for_cel(row, col)
-            for row in range(self.height)
-            for col in range(self.width)
-        ]
-
-        score = self.width * self.height - self.move_count + 1
-
-        if any([win == 1 for win in winner]):
-            return score
-        if any([win == 2 for win in winner]):
-            return -score
-        return 0
-
-    def move(self, row, col) -> "Board":
-        board = Board(self.width, self.height, line_to_win=self.line_to_win)
-        board.cells = [row.copy() for row in self.cells]
-        board.cells[row][col] = self.current_player()
-        board.move_count = self.move_count + 1
-        return board
-
-
-class Player:
-    pass
-
-
-class AiPlayer(Player):
-    pass
-
-
-class HumanPlayer(Player):
-    pass
+        if self.winner is None:
+            print("Ничья")
+        elif self.winner == self.player1:
+            print("Победил игрок X")
+        else:
+            print("Победил игрок O")
 
 
 if __name__ == "__main__":
     print("Игра: гомоку")
     print("")
-    board = Board(3, 3, line_to_win=3)
-    board.show()
-    print(board.score())
-    board = board.move(1, 1)
-    board.show()
-    print(board.score())
-    board = board.move(1, 0)
-    board.show()
-    print(board.score())
-    board = board.move(0, 0)
-    board.show()
-    print(board.score())
-    board = board.move(2, 0)
-    board.show()
-    print(board.score())
-    board = board.move(2, 2)
-    board.show()
-    print(board.score())
+
+    player1 = choose_player("X")
+    player2 = choose_player("O")
+
+    game = Game(Board(3, 3, line_to_win=3), player1, player2)
+    game.play()
